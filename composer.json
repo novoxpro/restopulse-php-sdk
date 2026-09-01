@@ -1,0 +1,39 @@
+{
+    "name": "novoxpro/restopulse-php-sdk",
+    "description": "PHP SDK for RestoPulse REST API",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://restopulse.ru",
+    "keywords": [
+        "restopulse",
+        "sdk",
+        "api",
+        "php"
+    ],
+    "require": {
+        "php": "^8.1",
+        "guzzlehttp/guzzle": "^7.9",
+        "psr/log": "^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Restopulse\\PhpSdk\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Restopulse\\PhpSdk\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
