@@ -7,6 +7,8 @@ namespace Restopulse\PhpSdk\DTO\Request;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
+use JsonException;
+use Restopulse\PhpSdk\Exceptions\SerializationException;
 use Restopulse\PhpSdk\Exceptions\ValidationException;
 
 /**
@@ -167,6 +169,60 @@ final class EventDto
     public function getFields(): array
     {
         return $this->fields;
+    }
+
+    /**
+     * Преобразует событие в массив для JSON-запроса.
+     *
+     * @return array{
+     *     branchIds: list<int>,
+     *     eventType: string,
+     *     externalId: string,
+     *     eventDate: string,
+     *     title: string,
+     *     preview: string,
+     *     message: string,
+     *     idempotencyKey: string,
+     *     fields?: list<array{title: string, value: string}>
+     * }
+     */
+    public function toArray(): array
+    {
+        $payload = [
+            'branchIds' => $this->branchIds,
+            'eventType' => $this->eventType,
+            'externalId' => $this->externalId,
+            'eventDate' => $this->getEventDateIso8601(),
+            'title' => $this->title,
+            'preview' => $this->preview,
+            'message' => $this->message,
+            'idempotencyKey' => $this->idempotencyKey,
+        ];
+
+        if ($this->fields !== []) {
+            $payload['fields'] = array_map(
+                static fn (EventFieldDto $field): array => $field->toArray(),
+                $this->fields,
+            );
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Преобразует событие в JSON-строку для HTTP-запроса.
+     */
+    public function toJson(int $flags = JSON_UNESCAPED_UNICODE): string
+    {
+        try {
+            return json_encode($this->toArray(), JSON_THROW_ON_ERROR | $flags);
+        } catch (JsonException $exception) {
+            throw new SerializationException(
+                'Failed to serialize EventDto to JSON.',
+                0,
+                $exception,
+            );
+        }
     }
 
     /**

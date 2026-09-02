@@ -39,6 +39,19 @@ final class EventFieldDto
         return $this->value;
     }
 
+    /**
+     * Преобразует поле в массив для JSON-запроса.
+     *
+     * @return array{title: string, value: string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'title' => $this->title,
+            'value' => $this->value,
+        ];
+    }
+
     /** Проверяет корректность полей. */
     private function validate(): void
     {
