@@ -34,17 +34,29 @@ final class HttpClient
     /** Экземпляр Guzzle HTTP-клиента. */
     private readonly GuzzleClient $client;
 
+    /** @var (callable(int): void)|null */
+    private $sleeper;
+
+    /** @var (callable(): float)|null */
+    private $timeProvider;
+
     /**
      * Создает HTTP-клиент SDK.
      *
      * @param Configuration $configuration Параметры подключения к API.
      * @param GuzzleClient|null $guzzleClient Опциональный Guzzle-клиент (для тестов).
+     * @param (callable(int): void)|null $sleeper Опциональная функция ожидания между попытками (для тестов).
+     * @param (callable(): float)|null $timeProvider Опциональный источник времени (для тестов).
      */
     public function __construct(
         Configuration $configuration,
         ?GuzzleClient $guzzleClient = null,
+        ?callable $sleeper = null,
+        ?callable $timeProvider = null,
     ) {
         $this->configuration = $configuration;
+        $this->sleeper = $sleeper;
+        $this->timeProvider = $timeProvider;
         $this->client = $guzzleClient ?? new GuzzleClient([
             'base_uri' => $configuration->getBaseUrl() . '/',
             'timeout' => $configuration->getRequestTimeout(),
@@ -93,7 +105,7 @@ final class HttpClient
     }
 
     /**
-     * Выполняет HTTP-запрос к Public API.
+     * Выполняет HTTP-запрос к Public API с учетом настроек повторных попыток.
      *
      * @param string $method HTTP-метод (`GET`, `POST` и т.д.).
      * @param string $path Относительный путь ресурса.
@@ -106,6 +118,41 @@ final class HttpClient
      * @throws RestopulseException При HTTP-ошибке API.
      */
     private function request(string $method, string $path, ?array $body = null): mixed
+    {
+        $startedAt = $this->now();
+        $maxAttempts = $this->configuration->getMaxRetries() + 1;
+        $attempt = 0;
+        $lastException = null;
+
+        while ($attempt < $maxAttempts) {
+            ++$attempt;
+
+            try {
+                return $this->executeOnce($method, $path, $body);
+            } catch (RestopulseException $exception) {
+                $lastException = $exception;
+
+                if (!$this->shouldRetry($exception) || $attempt >= $maxAttempts) {
+                    throw $exception;
+                }
+
+                if ($this->hasExceededMaxExecutionTime($startedAt)) {
+                    throw $exception;
+                }
+
+                $this->sleep($this->calculateRetryDelayMs($attempt));
+            }
+        }
+
+        throw $lastException ?? new NetworkException('API request failed.');
+    }
+
+    /**
+     * Выполняет одну попытку HTTP-запроса без повторов.
+     *
+     * @param array<string, mixed>|null $body
+     */
+    private function executeOnce(string $method, string $path, ?array $body): mixed
     {
         $options = [
             'headers' => $this->buildHeaders(),
@@ -126,6 +173,58 @@ final class HttpClient
         }
 
         return $this->handleResponse($response);
+    }
+
+    /**
+     * Определяет, можно ли повторить запрос после ошибки.
+     */
+    private function shouldRetry(RestopulseException $exception): bool
+    {
+        if ($exception instanceof NetworkException) {
+            return true;
+        }
+
+        return $exception instanceof ApiException && $exception->getCode() >= 500;
+    }
+
+    /**
+     * Рассчитывает задержку перед повторной попыткой: RetryDelay × 2^(attempt - 1).
+     */
+    private function calculateRetryDelayMs(int $attempt): int
+    {
+        return (int) ($this->configuration->getRetryDelayMs() * (2 ** ($attempt - 1)));
+    }
+
+    /**
+     * Проверяет превышение общего времени исполнения операции.
+     */
+    private function hasExceededMaxExecutionTime(float $startedAt): bool
+    {
+        return ($this->now() - $startedAt) >= $this->configuration->getMaxExecutionTime();
+    }
+
+    /**
+     * Выполняет паузу перед следующей попыткой.
+     */
+    private function sleep(int $milliseconds): void
+    {
+        if ($this->sleeper !== null) {
+            ($this->sleeper)($milliseconds);
+
+            return;
+        }
+
+        usleep($milliseconds * 1000);
+    }
+
+    /** Возвращает текущее время в секундах с дробной частью. */
+    private function now(): float
+    {
+        if ($this->timeProvider !== null) {
+            return ($this->timeProvider)();
+        }
+
+        return microtime(true);
     }
 
     /**

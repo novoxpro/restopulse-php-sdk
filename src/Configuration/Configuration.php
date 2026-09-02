@@ -20,19 +20,19 @@ final class Configuration
     public const DEFAULT_BASE_URL = 'https://restopulse.ru';
 
     /** Максимальное время выполнения HTTP-запроса (секунды). */
-    public const DEFAULT_REQUEST_TIMEOUT = 30.0;
+    public const DEFAULT_REQUEST_TIMEOUT = 10.0;
 
     /** Максимальное время ожидания установки соединения (секунды). */
-    public const DEFAULT_CONNECT_TIMEOUT = 10.0;
+    public const DEFAULT_CONNECT_TIMEOUT = 5.0;
 
     /** Максимальное количество повторных попыток после первой неуспешной отправки. */
-    public const DEFAULT_MAX_RETRIES = 0;
+    public const DEFAULT_MAX_RETRIES = 2;
 
     /** Базовый интервал между повторными попытками (миллисекунды). */
     public const DEFAULT_RETRY_DELAY_MS = 1000;
 
     /** Общее время исполнения операции, включая ожидание между повторами (секунды). */
-    public const DEFAULT_MAX_EXECUTION_TIME = 60.0;
+    public const DEFAULT_MAX_EXECUTION_TIME = 30.0;
 
     private readonly string $apiKey;
 

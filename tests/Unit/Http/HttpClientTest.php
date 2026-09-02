@@ -89,6 +89,7 @@ final class HttpClientTest extends TestCase
             baseUrl: 'https://restopulse.ru',
             requestTimeout: 45.0,
             connectTimeout: 12.5,
+            maxExecutionTime: 45.0,
         );
 
         $history = [];

@@ -70,6 +70,7 @@ final class HttpClientErrorMappingTest extends TestCase
         $configuration = new Configuration(
             apiKey: 'test-api-key',
             baseUrl: 'https://restopulse.ru',
+            maxRetries: 0,
         );
 
         $mockHandler = new MockHandler([
@@ -114,6 +115,7 @@ final class HttpClientErrorMappingTest extends TestCase
         $configuration = new Configuration(
             apiKey: 'test-api-key',
             baseUrl: 'https://restopulse.ru',
+            maxRetries: 0,
         );
 
         $mockHandler = new MockHandler($responses);
