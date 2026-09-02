@@ -12,5 +12,5 @@ namespace Restopulse\PhpSdk;
 final class Version
 {
     /** Текущая версия SDK. */
-    public const SDK_VERSION = '0.1.0';
+    public const SDK_VERSION = '1.0.0';
 }
