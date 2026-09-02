@@ -2,5 +2,6 @@
 .phpunit.cache/
 .idea/
 .vscode/
+.cursor/
 .DS_Store
 composer.lock
