@@ -7,6 +7,11 @@ namespace Restopulse\PhpSdk\Http;
 use GuzzleHttp\Client as GuzzleClient;
 use Restopulse\PhpSdk\Configuration\Configuration;
 
+/**
+ * Внутренний HTTP-клиент SDK.
+ *
+ * Отвечает за выполнение HTTP-запросов к REST API RestoPulse.
+ */
 final class HttpClient
 {
     private readonly GuzzleClient $client;

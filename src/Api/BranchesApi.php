@@ -6,6 +6,9 @@ namespace Restopulse\PhpSdk\Api;
 
 use Restopulse\PhpSdk\Http\HttpClient;
 
+/**
+ * API для работы с филиалами предприятия.
+ */
 final class BranchesApi
 {
     public function __construct(

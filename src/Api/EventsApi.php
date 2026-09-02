@@ -6,6 +6,9 @@ namespace Restopulse\PhpSdk\Api;
 
 use Restopulse\PhpSdk\Http\HttpClient;
 
+/**
+ * API для отправки событий в RestoPulse.
+ */
 final class EventsApi
 {
     public function __construct(
