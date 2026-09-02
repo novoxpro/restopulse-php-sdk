@@ -34,6 +34,9 @@ final class HttpClient
     /** Экземпляр Guzzle HTTP-клиента. */
     private readonly GuzzleClient $client;
 
+    /** Логгер HTTP-запросов. */
+    private readonly HttpClientLogger $logger;
+
     /** @var (callable(int): void)|null */
     private $sleeper;
 
@@ -57,6 +60,7 @@ final class HttpClient
         $this->configuration = $configuration;
         $this->sleeper = $sleeper;
         $this->timeProvider = $timeProvider;
+        $this->logger = new HttpClientLogger($configuration->getLogger());
         $this->client = $guzzleClient ?? new GuzzleClient([
             'base_uri' => $configuration->getBaseUrl() . '/',
             'timeout' => $configuration->getRequestTimeout(),
@@ -123,12 +127,13 @@ final class HttpClient
         $maxAttempts = $this->configuration->getMaxRetries() + 1;
         $attempt = 0;
         $lastException = null;
+        $url = $this->buildFullUrl($path);
 
         while ($attempt < $maxAttempts) {
             ++$attempt;
 
             try {
-                return $this->executeOnce($method, $path, $body);
+                return $this->executeOnce($method, $path, $url, $body);
             } catch (RestopulseException $exception) {
                 $lastException = $exception;
 
@@ -139,6 +144,14 @@ final class HttpClient
                 if ($this->hasExceededMaxExecutionTime($startedAt)) {
                     throw $exception;
                 }
+
+                $this->logger->logRetry(
+                    method: $method,
+                    url: $url,
+                    attempt: $attempt,
+                    error: $exception->getMessage(),
+                    requestBody: $body,
+                );
 
                 $this->sleep($this->calculateRetryDelayMs($attempt));
             }
@@ -152,8 +165,12 @@ final class HttpClient
      *
      * @param array<string, mixed>|null $body
      */
-    private function executeOnce(string $method, string $path, ?array $body): mixed
+    private function executeOnce(string $method, string $path, string $url, ?array $body): mixed
     {
+        $attemptStartedAt = $this->now();
+
+        $this->logger->logRequest($method, $url, $body);
+
         $options = [
             'headers' => $this->buildHeaders(),
         ];
@@ -169,10 +186,48 @@ final class HttpClient
                 $options,
             );
         } catch (GuzzleException $exception) {
-            throw new NetworkException($exception->getMessage(), 0, $exception);
+            $networkException = new NetworkException($exception->getMessage(), 0, $exception);
+
+            $this->logger->logException(
+                method: $method,
+                url: $url,
+                executionTime: $this->now() - $attemptStartedAt,
+                exception: $networkException,
+                requestBody: $body,
+            );
+
+            throw $networkException;
         }
 
-        return $this->handleResponse($response);
+        $statusCode = $response->getStatusCode();
+        $responseBody = (string) $response->getBody();
+        $executionTime = $this->now() - $attemptStartedAt;
+
+        try {
+            $result = $this->handleResponse($statusCode, $responseBody);
+        } catch (RestopulseException $exception) {
+            $this->logger->logException(
+                method: $method,
+                url: $url,
+                executionTime: $executionTime,
+                exception: $exception,
+                responseStatus: $statusCode,
+                responseBody: $responseBody,
+                requestBody: $body,
+            );
+
+            throw $exception;
+        }
+
+        $this->logger->logSuccess(
+            method: $method,
+            url: $url,
+            responseStatus: $statusCode,
+            responseBody: $responseBody,
+            executionTime: $executionTime,
+        );
+
+        return $result;
     }
 
     /**
@@ -252,6 +307,14 @@ final class HttpClient
     }
 
     /**
+     * Собирает полный URL запроса к Public API.
+     */
+    private function buildFullUrl(string $path): string
+    {
+        return $this->configuration->getBaseUrl() . $this->buildUri($path);
+    }
+
+    /**
      * Обрабатывает HTTP-ответ: извлекает `data` или преобразует ошибку в исключение SDK.
      *
      * @return mixed Значение поля `data` из успешного ответа API.
@@ -259,10 +322,9 @@ final class HttpClient
      * @throws RestopulseException При HTTP-ошибке API.
      * @throws SerializationException При некорректном JSON в ответе.
      */
-    private function handleResponse(ResponseInterface $response): mixed
+    private function handleResponse(int $statusCode, string $responseBody): mixed
     {
-        $statusCode = $response->getStatusCode();
-        $decoded = $this->decodeResponse($response);
+        $decoded = $this->decodeBody($responseBody);
 
         if ($statusCode >= 200 && $statusCode < 300) {
             return $this->extractSuccessData($decoded);
@@ -334,10 +396,8 @@ final class HttpClient
      *
      * @throws SerializationException При пустом невалидном JSON или если корень не является объектом.
      */
-    private function decodeResponse(ResponseInterface $response): array
+    private function decodeBody(string $body): array
     {
-        $body = (string) $response->getBody();
-
         if ($body === '') {
             return [];
         }

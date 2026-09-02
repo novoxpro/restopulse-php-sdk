@@ -77,7 +77,7 @@ final class HttpClientErrorMappingTest extends TestCase
             new ConnectException(
                 'Connection timed out',
                 new Request('GET', 'https://restopulse.ru/api/public/v1/branches'),
-            ),
+            )
         ]);
 
         $guzzleClient = new GuzzleClient([
