@@ -23,6 +23,16 @@ final class EventResponseDtoTest extends TestCase
     }
 
     /**
+     * Проверяет, что некорректное поле data вызывает исключение.
+     */
+    public function test_from_response_data_throws_when_data_is_not_array(): void
+    {
+        $this->expectException(SerializationException::class);
+
+        EventResponseDto::fromResponseData(null);
+    }
+
+    /**
      * Проверяет, что отсутствие id вызывает исключение.
      */
     public function test_from_array_throws_when_id_is_missing(): void

@@ -57,6 +57,16 @@ final class BranchDtoTest extends TestCase
     }
 
     /**
+     * Проверяет, что некорректное поле data вызывает исключение.
+     */
+    public function test_list_from_response_data_throws_when_data_is_not_array(): void
+    {
+        $this->expectException(SerializationException::class);
+
+        BranchDto::listFromResponseData(null);
+    }
+
+    /**
      * Проверяет, что отсутствие обязательного ключа вызывает исключение.
      */
     public function test_from_array_throws_when_required_key_is_missing(): void

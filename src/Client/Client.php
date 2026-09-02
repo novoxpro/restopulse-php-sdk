@@ -21,8 +21,9 @@ final class Client
 
     public function __construct(
         private readonly Configuration $configuration,
+        ?HttpClient $httpClient = null,
     ) {
-        $this->httpClient = new HttpClient($configuration);
+        $this->httpClient = $httpClient ?? new HttpClient($configuration);
     }
 
     /** Возвращает API для работы с филиалами. */

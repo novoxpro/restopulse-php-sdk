@@ -44,6 +44,20 @@ final class BranchDto
     /**
      * Создает список DTO из поля data ответа REST API.
      *
+     * @return list<self>
+     */
+    public static function listFromResponseData(mixed $data): array
+    {
+        if (!is_array($data)) {
+            throw new SerializationException('Branches response data must be an array.');
+        }
+
+        return self::listFromArray($data);
+    }
+
+    /**
+     * Создает список DTO из поля data ответа REST API.
+     *
      * @param array<int, array<string, mixed>> $data
      *
      * @return list<self>
@@ -66,6 +80,8 @@ final class BranchDto
     }
 
     /**
+     * Проверяет наличие ключа в массиве и возвращает его значение.
+     * 
      * @param array<string, mixed> $data
      */
     private static function requireKey(array $data, string $key): mixed

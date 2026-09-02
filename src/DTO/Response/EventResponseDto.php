@@ -23,6 +23,18 @@ final class EventResponseDto
 
     /**
      * Создает DTO из поля data ответа REST API.
+     */
+    public static function fromResponseData(mixed $data): self
+    {
+        if (!is_array($data)) {
+            throw new SerializationException('Event response data must be an array.');
+        }
+
+        return self::fromArray($data);
+    }
+
+    /**
+     * Создает DTO из поля data ответа REST API.
      *
      * @param array<string, mixed> $data
      */
